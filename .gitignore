@@ -1,2 +1,4 @@
 .client
 .server
+vault.db
+__pycache__
