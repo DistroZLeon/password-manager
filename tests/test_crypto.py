@@ -36,7 +36,7 @@ def test_vault_creation_and_unlock():
     )
     assert session_b.is_active is True
 
-    # 3. Test that both sessions can decrypt each other's data
+    # Test that both sessions can decrypt each other's data
     entry = session_a.encrypt_entry("my_secret_bank_password")
     decrypted_by_b = session_b.decrypt_entry(entry["nonce"], entry["ciphertext"])
 
