@@ -22,7 +22,7 @@ class User(Base):
     locked= Column(Boolean, default= False)
     failed_attempts= Column(Integer, default= 0)
 
-    entries= relationship("KeyPass", back_populates= "owner")
+    passes= relationship("KeyPass", back_populates= "owner")
 
 class KeyPass(Base):
     __tablename__= "key_passes"

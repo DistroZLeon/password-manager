@@ -29,11 +29,21 @@ class LoginRequest(BaseModel):
     username: str
     auth_tag: str
 
+@app.get("/users/{username}/salt")
+@limiter.limit("10/minute")
+def get_salt(request: Request, username: str, db: Session= Depends(get_db)):
+    user= db.query(User).filter(User.username== username).first()
+    
+    if not user:
+        raise HTTPException(status_code= 404, detail= "User not found!")
+
+    return {"salt": user.salt}
+
 @app.post("/register")
 @limiter.limit("20/minute")
 def register_user(request: Request, req: RegisterRequest, db: Session= Depends(get_db)):
     if db.query(User).filter(User.username== req.username).first():
-        raise HTTPException(status_code= 400, details= "Username already registered!")
+        raise HTTPException(status_code= 400, detail= "Username already registered!")
 
     user= User(
         username= req.username,
