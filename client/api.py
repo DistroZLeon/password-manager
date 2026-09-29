@@ -37,4 +37,18 @@ class VaultAPI:
         res= requests.post(f"{self.base_url}/keypasses/sync", json= {"username": username, "auth_tag": auth_tag})
         res.raise_for_status()
         return res.json()["vault"]
-    
+
+    def update_keypass(self, passId: str, username: str, auth_tag: str, nonce: str, cipher: str):
+        payload= {"username": username, "auth_tag": auth_tag, "nonce": nonce, "cipher": cipher}
+        res= requests.put(
+            f"{self.base_url}/keypasses/{passId}/update",
+            json= payload
+        )
+        res.raise_for_status()
+
+    def delete_keypass(self, passId: str, username: str, auth_tag: str):
+        res= requests.delete(
+            f"{self.base_url}/keypasses/{passId}/delete",
+                        json= {"username": username, "auth_tag": auth_tag}
+        )
+        res.raise_for_status()

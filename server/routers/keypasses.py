@@ -49,3 +49,29 @@ def sync_vault(request: Request, req: LoginRequest, db: Session= Depends(get_db)
             for p in passes
         ]
     }
+
+@router.put("/keypasses/{passId}/update")
+@limiter.limit("20/minute")
+def update_keypass(request: Request, passId: str, req: KeyPassCreate, db: Session= Depends(get_db)):
+    user= authenticate_user(db, req.username, req.auth_tag)
+
+    keypass= db.query(KeyPass).filter(KeyPass.id== passId, KeyPass.user_id== user.id).first()
+    if not keypass:
+        raise HTTPException(status_code= 404, detail= "Entry not found")
+
+    keypass.nonce= req.nonce
+    keypass.ciphertext= req.cipher
+    db.commit()
+    return {"message": "Keypass updated!"}
+
+@router.delete("/keypasses/{passId}/update")
+@limiter.limit("20/minute")
+def delete_keypass(request: Request, passId: str, req: LoginRequest, db: Session= Depends(get_db)):
+    user= authenticate_user(db, req.username, req.auth_tag)
+    keypass= db.query(KeyPass).filter(KeyPass.id== passId, KeyPass.user_id== user.id).first()
+    if not keypass:
+            raise HTTPException(status_code= 404, detail= "Entry not found")
+
+    db.delete(keypass)
+    db.commit()
+    return {"message": "Keypass deleted!"}

@@ -62,3 +62,19 @@ def login_user(request: Request,req: LoginRequest, db: Session= Depends(get_db))
         "vk_nonce": user.vk_nonce,
         "encrypted_vk": user.encrypted_vk
     }
+
+@router.post("/users/unlock")
+@limiter.limit("5/minute")
+def unlock_account(request: Request, req: LoginRequest, db: Session= Depends(get_db)):
+    user= db.query(User).filter(User.username== req.username).first()
+
+    if not user:
+        raise HTTPException(status_code= 404, detail= "User not found")
+
+    if user.auth_tag== req.auth_tag:
+        user.locked= False
+        user.failed_attempts= 0
+        db.commit()
+        return {"message": "Account unlocked."}
+
+    raise HTTPException(status_code= 401, detail= "Invalid master passphrase.")
