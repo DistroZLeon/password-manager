@@ -10,14 +10,14 @@ from models import Base
 
 limiter.enabled= False
 
-SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
+SQLALCHEMY_DATABASE_URL= "sqlite:///:memory:"
 
-engine = create_engine(
+engine= create_engine(
     SQLALCHEMY_DATABASE_URL, 
-    connect_args={"check_same_thread": False},
-    poolclass=StaticPool
+    connect_args= {"check_same_thread": False},
+    poolclass= StaticPool
 )
-TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+TestingSessionLocal= sessionmaker(autocommit= False, autoflush= False, bind= engine)
 
 # Override the get_db dependency to use the test database instead of vault.db
 def override_get_db():
@@ -27,22 +27,22 @@ def override_get_db():
     finally:
         db.close()
 
-app.dependency_overrides[get_db] = override_get_db
-client = TestClient(app)
+app.dependency_overrides[get_db]= override_get_db
+client= TestClient(app)
 
 # Reset the database before EVERY test
-@pytest.fixture(autouse=True)
+@pytest.fixture(autouse= True)
 def setup_and_teardown_db():
-    Base.metadata.create_all(bind=engine)
+    Base.metadata.create_all(bind= engine)
     yield
-    Base.metadata.drop_all(bind=engine)
+    Base.metadata.drop_all(bind= engine)
 
 # --- TESTS ---
 
 def test_register_user_success():
-    response = client.post(
-        "/register",
-        json={
+    response= client.post(
+        "/users/register",
+        json= {
             "username": "username",
             "salt": "randomsalt123",
             "auth_tag": "validauthtag",
@@ -50,11 +50,11 @@ def test_register_user_success():
             "encrypted_vk": "encryptedkey123"
         }
     )
-    assert response.status_code == 200
-    assert response.json() == {"message": "User registered!"}
+    assert response.status_code== 200
+    assert response.json()== {"message": "User registered!"}
 
 def test_register_duplicate_user_fails():
-    payload = {
+    payload= {
         "username": "username",
         "salt": "randomsalt123",
         "auth_tag": "validauthtag",
@@ -62,16 +62,16 @@ def test_register_duplicate_user_fails():
         "encrypted_vk": "encryptedkey123"
     }
     # Register once
-    client.post("/register", json=payload)
+    client.post("/users/register", json= payload)
     
-    response = client.post("/register", json=payload)
-    assert response.status_code == 400
-    assert response.json()["detail"] == "Username already registered!"
+    response = client.post("/users/register", json= payload)
+    assert response.status_code== 400
+    assert response.json()["detail"]== "Username already registered!"
 
 def test_get_salt_success():
     client.post(
-        "/register",
-        json={
+        "/users/register",
+        json= {
             "username": "username",
             "salt": "randomsalt123",
             "auth_tag": "validauthtag",
@@ -80,17 +80,17 @@ def test_get_salt_success():
         }
     )
     response = client.get("/users/username/salt")
-    assert response.status_code == 200
-    assert response.json()["salt"] == "randomsalt123"
+    assert response.status_code== 200
+    assert response.json()["salt"]== "randomsalt123"
 
 def test_get_salt_not_found():
     response = client.get("/users/ghost/salt")
-    assert response.status_code == 404
+    assert response.status_code== 404
 
 def test_login_success():
     client.post(
-        "/register",
-        json={
+        "/users/register",
+        json= {
             "username": "username",
             "salt": "randomsalt123",
             "auth_tag": "validauthtag",
@@ -100,21 +100,21 @@ def test_login_success():
     )
     
     # Attempt login
-    response = client.post(
-        "/login",
-        json={"username": "username", "auth_tag": "validauthtag"}
+    response= client.post(
+        "/users/login",
+        json= {"username": "username", "auth_tag": "validauthtag"}
     )
-    assert response.status_code == 200
+    assert response.status_code== 200
     
     # Ensure it returns the cryptographic vault data
-    data = response.json()
-    assert data["vk_nonce"] == "nonce123"
-    assert data["encrypted_vk"] == "encryptedkey123"
+    data= response.json()
+    assert data["vk_nonce"]== "nonce123"
+    assert data["encrypted_vk"]== "encryptedkey123"
 
 def test_login_failure_triggers_lockout():
     client.post(
-        "/register",
-        json={
+        "/users/register",
+        json= {
             "username": "username",
             "salt": "randomsalt123",
             "auth_tag": "validauthtag",
@@ -125,17 +125,17 @@ def test_login_failure_triggers_lockout():
     
     # Fail 5 times in a row
     for _ in range(5):
-        response = client.post(
-            "/login",
-            json={"username": "username", "auth_tag": "WRONG_TAG"}
+        response= client.post(
+            "/users/login",
+            json= {"username": "username", "auth_tag": "WRONG_TAG"}
         )
-        assert response.status_code == 401
-        assert response.json()["detail"] == "Invalid credentials"
+        assert response.status_code== 401
+        assert response.json()["detail"]== "Invalid credentials"
         
     # The 6th attempt should return the lockout message, even if the tag is still wrong
     response = client.post(
-        "/login",
-        json={"username": "username", "auth_tag": "WRONG_TAG"}
+        "/users/login",
+        json= {"username": "username", "auth_tag": "WRONG_TAG"}
     )
-    assert response.status_code == 401
-    assert response.json()["detail"] == "Account locked"
+    assert response.status_code== 401
+    assert response.json()["detail"]== "Account locked"

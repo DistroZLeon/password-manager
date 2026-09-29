@@ -17,7 +17,7 @@ def get_salt(request: Request, username: str, db: Session= Depends(get_db)):
 
     return {"salt": user.salt}
 
-@router.post("/register")
+@router.post("/users/register")
 @limiter.limit("20/minute")
 def register_user(request: Request, req: RegisterRequest, db: Session= Depends(get_db)):
     if db.query(User).filter(User.username== req.username).first():
@@ -34,7 +34,7 @@ def register_user(request: Request, req: RegisterRequest, db: Session= Depends(g
     db.commit()
     return {"message": "User registered!"}
 
-@router.post("/login")
+@router.post("/users/login")
 @limiter.limit("5/minute")
 def login_user(request: Request,req: LoginRequest, db: Session= Depends(get_db)):
     user= db.query(User).filter(User.username== req.username).first()

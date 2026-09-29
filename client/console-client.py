@@ -1,13 +1,16 @@
 import re
 import getpass
+import json
 import requests
 import secrets
 import os
 from dotenv import load_dotenv
 from crypto import KeyDerivation, VaultSession
+from api import VaultAPI
 
 load_dotenv()
 BASE_URL= os.getenv("BASE_URL", "http://127.0.0.1:8000")
+api = VaultAPI(BASE_URL)
 
 def is_password_strong(password: str)-> bool:
     if len(password) < 12:
@@ -20,6 +23,13 @@ def is_password_strong(password: str)-> bool:
         return False
 
     return True
+
+def handle_api_error(e):
+    try:
+        error_msg = e.response.json().get('detail', 'Unknown error')
+    except Exception:
+        error_msg = e.response.text if hasattr(e, 'response') else str(e)
+    print(f"\n[-] Request failed: {error_msg}")
 
 def register():
     print("\n--- New Vault ---")
@@ -55,17 +65,12 @@ def register():
     }
 
     try:
-        response= requests.post(f"{BASE_URL}/register", json= payload)
-        response.raise_for_status()
-        print("\n[*] Succesful registration!")
-    except requests.exceptions.HTTPError as e:
-        try:
-            error_msg = e.response.json().get('detail', 'Unknown error')
-        except ValueError:
-            error_msg = e.response.text
-        print(f"\n[-] Request failed: {error_msg}")
+        api.register(payload)
+        print("\n[*] Successful registration!")
+    except Exception as e:
+        handle_api_error(e)
 
-def login()-> VaultSession:
+def login()-> tuple[VaultSession, str, str]:
     print("\n--- Log in Vault ---")
     username= input("Username: ")
 
@@ -83,30 +88,70 @@ def login()-> VaultSession:
     auth_tag= KeyDerivation.derive_auth_tag(master_key)
 
     try:
-        login_resp= requests.post(
-            f"{BASE_URL}/login",
-            json= {"username": username, "auth_tag": auth_tag}
-        )
-        login_resp.raise_for_status()
-        data= login_resp.json()
-    except requests.exceptions.HTTPError as e:
-        try:
-            error_msg = e.response.json().get('detail', 'Unknown error')
-        except ValueError:
-            error_msg = e.response.text
-        print(f"\n[-] Request failed: {error_msg}")
-
-    try:
+        data= api.login(username, auth_tag)
         session= VaultSession.unlock_vault(
             master_key,
             data["vk_nonce"],
             data["encrypted_vk"]
         )
         print("\n[+] Logged in Vault!")
-        return session
+        return session, username, auth_tag
     except Exception as e:
-        print(f"\n[-] Failed to decrypt vault: {e}")
-        return None
+        handle_api_error(e)
+        return None, None, None
+
+def vault_menu(session: VaultSession, username: str, auth_tag: str):
+    """Vault sub-menu"""
+    while True:
+        print("\n--- Vault Actions --")
+        print("1. Add a pass")
+        print("2. View a pass")
+        print("3. Logout")
+        choice= input("Select the option: ")
+
+        if choice== "1":
+            name= input("Name: ")
+            url= input("URL: ")
+            acc_user= input("Account username: ")
+            acc_pass= getpass.getpass("Account password: ")
+
+            data= json.dumps({
+                "name": name,
+                "url": url,
+                "username": acc_user,
+                "password": acc_pass
+            })
+
+            enc= session.encrypt_entry(data)
+            try:
+                api.save_keypass(username, auth_tag, enc["nonce"], enc["ciphertext"])
+                print("\n[+] Password saved!")
+            except Exception as e:
+                handle_api_error(e)
+
+        elif choice== "2":
+            try:
+                enc_rows= api.sync_vault(username, auth_tag)
+                print(f"\n[*] Obtained {len(enc_rows)} rows!")
+
+                for row in enc_rows:
+                    djson= session.decrypt_entry(row["nonce"], row["ciphertext"])
+                    data= json.loads(djson)
+
+                    print(f"\n--- {data.get('name', 'Unknown')} ---")
+                    print(f"URL:      {data.get('url', '')}")
+                    print(f"Username: {data.get('username', '')}")
+                    print(f"Password: {data.get('password', '')}")
+                    print("-" * 25)
+            except Exception as e:
+                handle_api_error(e)
+
+        elif choice== "3":
+            session.lock()
+            print("[-] Vault locked!")
+            break
+        else:
+            print("[#] Invalid option")
 
 def main():
     while True:
@@ -116,11 +161,10 @@ def main():
         if choice == '1':
             register()
         elif choice == '2':
-            session = login()
+            session, username, auth_tag = login()
             if session and session.is_active:
                 print("Your session is active.")
-                session.lock()
-                print("[-] Vault locked!")
+                vault_menu(session, username, auth_tag)
         elif choice == '3':
             break
         else:
