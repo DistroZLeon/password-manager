@@ -1,8 +1,6 @@
 .client
 .server
 vault.db
-client/__pycache__
-server/__pycache__
-tests/__pycache__
+__pycache__
 .pytest_cache
 .vscode

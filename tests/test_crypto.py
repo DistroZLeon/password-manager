@@ -24,11 +24,11 @@ def test_vault_creation_and_unlock():
     salt = b"random_salt"
     master_key = KeyDerivation.derive_master_key(master_password, salt)
 
-    # 1. Simulate account creation on Device A
+    # Simulate account creation on Device A
     session_a, encrypted_vk_payload = VaultSession.create_vault(master_key)
     assert session_a.is_active is True
 
-    # 2. Simulate login on Device B
+    # Simulate login on Device B
     session_b = VaultSession.unlock_vault(
         master_key,
         encrypted_vk_payload["vk_nonce"],

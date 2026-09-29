@@ -4,7 +4,8 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from main import app, get_db, limiter
+from dependencies import get_db, limiter
+from main import app
 from models import Base
 
 limiter.enabled= False
