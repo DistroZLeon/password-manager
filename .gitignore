@@ -1,6 +1,7 @@
-.client
-.server
+.client/
+.server/
 vault.db
-__pycache__
+**/__pycache__/
 .pytest_cache
 .vscode
+**/.env
