@@ -45,6 +45,7 @@ class VaultAPI:
             json= payload
         )
         res.raise_for_status()
+        return res.json()
 
     def delete_keypass(self, passId: str, username: str, auth_tag: str):
         res= requests.delete(
@@ -52,3 +53,10 @@ class VaultAPI:
                         json= {"username": username, "auth_tag": auth_tag}
         )
         res.raise_for_status()
+        return res.json()
+
+    def unlock_account(self, username: str, auth_tag: str):
+        payload= {"username": username, "auth_tag": auth_tag}
+        res= requests.post(f"{self.base_url}/users/unlock", json= payload)
+        res.raise_for_status()
+        return res.json()

@@ -64,7 +64,7 @@ def update_keypass(request: Request, passId: str, req: KeyPassCreate, db: Sessio
     db.commit()
     return {"message": "Keypass updated!"}
 
-@router.delete("/keypasses/{passId}/update")
+@router.delete("/keypasses/{passId}/delete")
 @limiter.limit("20/minute")
 def delete_keypass(request: Request, passId: str, req: LoginRequest, db: Session= Depends(get_db)):
     user= authenticate_user(db, req.username, req.auth_tag)

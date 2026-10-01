@@ -100,13 +100,34 @@ def login()-> tuple[VaultSession, str, str]:
         handle_api_error(e)
         return None, None, None
 
+def unlock_account():
+    print("\n--- Unlock Account ---")
+    username= input("Username: ")
+    try:
+        salt= api.get_salt(username)
+    except Exception:
+        print("\n[-] User not found or error")
+        return
+
+    password= getpass.getpass("Passphrase: ").encode('utf-8')
+    master_key= KeyDerivation.derive_master_key(password, salt.encode('utf-8'))
+    auth_tag= KeyDerivation.derive_auth_tag(master_key)
+
+    try:
+        api.unlock_account(username, auth_tag)
+        print("\n[+] Account unlocked!")
+    except Exception as e:
+        handle_api_error(e)
+
 def vault_menu(session: VaultSession, username: str, auth_tag: str):
     """Vault sub-menu"""
     while True:
         print("\n--- Vault Actions --")
         print("1. Add a pass")
         print("2. View a pass")
-        print("3. Logout")
+        print("3. Edit a pass")
+        print("4. Delete a pass")
+        print("5. Logout")
         choice= input("Select the option: ")
 
         if choice== "1":
@@ -139,6 +160,7 @@ def vault_menu(session: VaultSession, username: str, auth_tag: str):
                     data= json.loads(djson)
 
                     print(f"\n--- {data.get('name', 'Unknown')} ---")
+                    print(f"Id:       {row["id"]}")
                     print(f"URL:      {data.get('url', '')}")
                     print(f"Username: {data.get('username', '')}")
                     print(f"Password: {data.get('password', '')}")
@@ -147,6 +169,35 @@ def vault_menu(session: VaultSession, username: str, auth_tag: str):
                 handle_api_error(e)
 
         elif choice== "3":
+            passId= input("Id of the Password: ")
+            name= input("Name: ")
+            url= input("URL: ")
+            acc_user= input("Account username: ")
+            acc_pass= getpass.getpass("Account password: ")
+
+            data= json.dumps({
+                            "name": name,
+                            "url": url,
+                            "username": acc_user,
+                            "password": acc_pass
+                        })
+            edata= session.encrypt_entry(data)
+
+            try:
+                api.update_keypass(passId, username, auth_tag, edata["nonce"], edata["ciphertext"])
+                print("\n[+] Password updated!")
+            except Exception as e:
+                handle_api_error(e)
+
+        elif choice== "4":
+            passId= input("Id of the Password: ")
+            try:
+                api.delete_keypass(passId, username, auth_tag)
+                print("\n[+] Password deleted!")
+            except Exception as e:
+                handle_api_error(e)
+
+        elif choice== "5":
             session.lock()
             print("[-] Vault locked!")
             break
@@ -155,20 +206,22 @@ def vault_menu(session: VaultSession, username: str, auth_tag: str):
 
 def main():
     while True:
-        print("\n1. Register. \n2. Login. \n3. Exit")
+        print("\n1. Register. \n2. Login. \n3. Unlock \n4. Exit")
         choice = input("Select an option: ")
         
-        if choice == '1':
+        if choice== '1':
             register()
-        elif choice == '2':
+        elif choice== '2':
             session, username, auth_tag = login()
             if session and session.is_active:
                 print("Your session is active.")
                 vault_menu(session, username, auth_tag)
-        elif choice == '3':
+        elif choice== "3":
+            unlock_account()
+        elif choice== '4':
             break
         else:
             print("Invalid choice.")
 
-if __name__ == "__main__":
+if __name__== "__main__":
     main()
