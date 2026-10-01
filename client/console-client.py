@@ -25,10 +25,13 @@ def is_password_strong(password: str)-> bool:
     return True
 
 def handle_api_error(e):
-    try:
-        error_msg = e.response.json().get('detail', 'Unknown error')
-    except Exception:
-        error_msg = e.response.text if hasattr(e, 'response') else str(e)
+    if hasattr(e, 'response') and e.response is not None:
+        try:
+            error_msg = e.response.json().get('detail', 'Unknown error')
+        except Exception:
+            error_msg = e.response.text
+    else:
+        error_msg = str(e) 
     print(f"\n[-] Request failed: {error_msg}")
 
 def register():
@@ -80,7 +83,7 @@ def login()-> tuple[VaultSession, str, str]:
         salt= salt_resp.json()["salt"]
     except requests.exceptions.HTTPError:
         print("\nUser not found or server error!")
-        return None
+        return None, None, None
 
     password= getpass.getpass("Master Passphrase: ").encode('utf-8')
     print("Obtaining keys...")
