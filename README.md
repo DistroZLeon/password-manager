@@ -81,3 +81,11 @@ nginx -t
 
 systemctl restart nginx
 ```
+
+### Adding ufw to the container
+```bash
+apt install ufw
+ufw allow 22/tcp
+ufw allow 80/tcp
+ufw enable
+```
