@@ -84,3 +84,39 @@ def test_sync_vault_success(api_client):
     vault= api_client.sync_vault("username", "auth_tag")
     assert len(vault)== 2
     assert vault[0]["ciphertext"]== "c1"
+
+@responses.activate
+def test_update_keypass_success(api_client):
+    responses.add(
+        responses.PUT,
+        "http://mock-server.local/keypasses/uuid-1234/update",
+        json={"message": "Keypass updated!"},
+        status=200
+    )
+    
+    result = api_client.update_keypass("uuid-1234", "username", "auth_tag", "new_nonce", "new_cipher")
+    assert result["message"] == "Keypass updated!"
+
+@responses.activate
+def test_delete_keypass_success(api_client):
+    responses.add(
+        responses.DELETE,
+        "http://mock-server.local/keypasses/uuid-1234/delete",
+        json={"message": "Keypass deleted!"},
+        status=200
+    )
+    
+    result = api_client.delete_keypass("uuid-1234", "username", "auth_tag")
+    assert result["message"] == "Keypass deleted!"
+
+@responses.activate
+def test_unlock_account_success(api_client):
+    responses.add(
+        responses.POST,
+        "http://mock-server.local/users/unlock",
+        json={"message": "Account unlocked."},
+        status=200
+    )
+    
+    result = api_client.unlock_account("username", "auth_tag")
+    assert result["message"] == "Account unlocked."

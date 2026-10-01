@@ -139,3 +139,68 @@ def test_login_failure_triggers_lockout():
     )
     assert response.status_code== 401
     assert response.json()["detail"]== "Account locked"
+
+def test_unlock_account_restores_access():
+    # Register and lock out a user
+    client.post("/users/register", json={
+        "username": "lockeduser", "salt": "salt123", "auth_tag": "validtag", 
+        "vk_nonce": "n", "encrypted_vk": "c"
+    })
+    
+    for _ in range(5):
+        client.post("/users/login", json={"username": "lockeduser", "auth_tag": "wrong_tag"})
+        
+    # Verify account is fully locked
+    res_locked = client.post("/users/login", json={"username": "lockeduser", "auth_tag": "wrong_tag"})
+    assert res_locked.json()["detail"] == "Account locked"
+    
+    # Unlock the account with the correct auth_tag
+    res_unlock = client.post("/users/unlock", json={"username": "lockeduser", "auth_tag": "validtag"})
+    assert res_unlock.status_code == 200
+    
+    # Verify normal login works again
+    res_login = client.post("/users/login", json={"username": "lockeduser", "auth_tag": "validtag"})
+    assert res_login.status_code == 200
+
+def test_keypass_crud_lifecycle():
+    # Setup User
+    client.post("/users/register", json={
+        "username": "vaultuser", "salt": "s", "auth_tag": "tag", 
+        "vk_nonce": "n", "encrypted_vk": "c"
+    })
+    
+    # Create
+    save_res = client.post("/keypasses/save", json={
+        "username": "vaultuser", "auth_tag": "tag", "nonce": "nonce1", "cipher": "cipher1"
+    })
+    assert save_res.status_code == 200
+    pass_id = save_res.json()["id"]
+    
+    # Read
+    sync_res = client.post("/keypasses/sync", json={"username": "vaultuser", "auth_tag": "tag"})
+    assert sync_res.status_code == 200
+    vault = sync_res.json()["vault"]
+    assert len(vault) == 1
+    assert vault[0]["id"] == pass_id
+    
+    # Update
+    update_res = client.put(f"/keypasses/{pass_id}/update", json={
+        "username": "vaultuser", "auth_tag": "tag", "nonce": "nonce2", "cipher": "cipher2"
+    })
+    assert update_res.status_code == 200
+    
+    # Verify Update
+    sync_updated = client.post("/keypasses/sync", json={"username": "vaultuser", "auth_tag": "tag"})
+    assert sync_updated.json()["vault"][0]["ciphertext"] == "cipher2"
+    
+    # Delete
+    delete_res = client.request(
+            "DELETE",
+            f"/keypasses/{pass_id}/delete", 
+            json={"username": "vaultuser", "auth_tag": "tag"}
+        )
+    assert delete_res.status_code == 200
+    
+    # Verify Deletion
+    sync_empty = client.post("/keypasses/sync", json={"username": "vaultuser", "auth_tag": "tag"})
+    assert len(sync_empty.json()["vault"]) == 0
