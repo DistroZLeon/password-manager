@@ -1,5 +1,5 @@
 import pytest
-from crypto import KeyDerivation, VaultSession
+from cli.crypto import KeyDerivation, VaultSession
 
 def test_key_consistency():
     master_password= b"VerySecretMasterPassword123."

@@ -2,7 +2,7 @@ import pytest
 import responses
 from requests.exceptions import HTTPError
 
-from api import VaultAPI
+from cli.api import VaultAPI
 
 @pytest.fixture
 def api_client():
